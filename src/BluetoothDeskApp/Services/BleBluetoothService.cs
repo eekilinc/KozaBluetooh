@@ -149,13 +149,37 @@ public class BleBluetoothService : IBleBluetoothService
     {
         if (_ioCharacteristic != null)
         {
-            _ioCharacteristic.ValueChanged -= IoCharacteristicOnValueChanged;
-            await _ioCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
-                GattClientCharacteristicConfigurationDescriptorValue.None);
+            try
+            {
+                _ioCharacteristic.ValueChanged -= IoCharacteristicOnValueChanged;
+            }
+            catch
+            {
+                // ignore
+            }
+
+            try
+            {
+                await _ioCharacteristic.WriteClientCharacteristicConfigurationDescriptorAsync(
+                    GattClientCharacteristicConfigurationDescriptorValue.None);
+            }
+            catch
+            {
+                // device may already be gone, ignore during disconnect
+            }
+
             _ioCharacteristic = null;
         }
 
-        _device?.Dispose();
+        try
+        {
+            _device?.Dispose();
+        }
+        catch
+        {
+            // ignore cleanup errors
+        }
+
         _device = null;
     }
 

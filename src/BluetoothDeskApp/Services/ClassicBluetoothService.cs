@@ -158,13 +158,16 @@ public class ClassicBluetoothService : IClassicBluetoothService
     {
         if (_serialPort != null)
         {
-            _serialPort.DataReceived -= SerialPortOnDataReceived;
-            if (_serialPort.IsOpen)
+            Safe(() => _serialPort.DataReceived -= SerialPortOnDataReceived);
+            Safe(() =>
             {
-                _serialPort.Close();
-            }
+                if (_serialPort.IsOpen)
+                {
+                    _serialPort.Close();
+                }
+            });
 
-            _serialPort.Dispose();
+            Safe(() => _serialPort.Dispose());
             _serialPort = null;
         }
 
@@ -225,27 +228,39 @@ public class ClassicBluetoothService : IClassicBluetoothService
 
     private void DisconnectRfcomm()
     {
-        _rfcommReadCts?.Cancel();
-        _rfcommReadCts?.Dispose();
+        Safe(() => _rfcommReadCts?.Cancel());
+        Safe(() => _rfcommReadCts?.Dispose());
         _rfcommReadCts = null;
 
-        _rfcommReader?.DetachStream();
-        _rfcommReader?.Dispose();
+        Safe(() => _rfcommReader?.DetachStream());
+        Safe(() => _rfcommReader?.Dispose());
         _rfcommReader = null;
 
-        _rfcommWriter?.DetachStream();
-        _rfcommWriter?.Dispose();
+        Safe(() => _rfcommWriter?.DetachStream());
+        Safe(() => _rfcommWriter?.Dispose());
         _rfcommWriter = null;
 
-        _rfcommSocket?.Dispose();
+        Safe(() => _rfcommSocket?.Dispose());
         _rfcommSocket = null;
 
-        _rfcommService?.Dispose();
+        Safe(() => _rfcommService?.Dispose());
         _rfcommService = null;
 
-        _rfcommDevice?.Dispose();
+        Safe(() => _rfcommDevice?.Dispose());
         _rfcommDevice = null;
 
         _rfcommReadTask = null;
+    }
+
+    private static void Safe(Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch
+        {
+            // Ignore cleanup errors while disconnecting.
+        }
     }
 }
