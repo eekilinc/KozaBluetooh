@@ -28,10 +28,16 @@ jobs:
         run: dotnet build BluetoothDeskApp.sln -c Release --no-restore
 
       - name: Publish EXE
-        run: dotnet publish src/BluetoothDeskApp/BluetoothDeskApp.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
+        run: dotnet publish src/BluetoothDeskApp/BluetoothDeskApp.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None /p:DebugSymbols=false -o artifacts/win-x64
+
+      - name: Prepare portable EXE only
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artifacts/portable -Force | Out-Null
+          Copy-Item artifacts/win-x64/KozaBluetooth.exe artifacts/portable/KozaBluetooth.exe -Force
 
       - name: Archive EXE
-        run: powershell -Command "Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/KozaBluetooth-win-x64.zip -Force"
+        run: powershell -Command "Compress-Archive -Path artifacts/portable/KozaBluetooth.exe -DestinationPath artifacts/KozaBluetooth-portable.zip -Force"
 
       - name: Prepare Turkish release notes
         shell: pwsh
@@ -40,13 +46,13 @@ jobs:
           KozaBluetooth ${env:GITHUB_REF_NAME}
 
           ## Ozet
-          - Windows x64 icin tek dosya EXE paketi eklendi.
+          - Windows x64 icin kurulum gerektirmeyen tek dosya EXE eklendi.
           - Bluetooth Classic (HC-05/HC-06) ve BLE destegi bu surumde mevcuttur.
 
-          ## Kurulum
-          1. Asagidaki varliklardan KozaBluetooth-win-x64.zip dosyasini indirin.
-          2. Zip dosyasini klasore cikartin.
-          3. KozaBluetooth.exe dosyasini calistirin.
+          ## Calistirma
+          1. Asagidaki varliklardan KozaBluetooth.exe dosyasini dogrudan indirin.
+          2. Dosyayi herhangi bir klasorde calistirin.
+          3. Alternatif olarak KozaBluetooth-portable.zip dosyasini indirip acabilirsiniz.
 
           ## Notlar
           - Uygulama Windows 10/11 icin hedeflenmistir.
@@ -58,4 +64,6 @@ jobs:
         with:
           name: KozaBluetooth ${{ github.ref_name }}
           body_path: artifacts/release-notes.md
-          files: artifacts/KozaBluetooth-win-x64.zip
+          files: |
+            artifacts/portable/KozaBluetooth.exe
+            artifacts/KozaBluetooth-portable.zip
