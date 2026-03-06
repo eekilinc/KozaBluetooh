@@ -33,8 +33,29 @@ jobs:
       - name: Archive EXE
         run: powershell -Command "Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/KozaBluetooth-win-x64.zip -Force"
 
+      - name: Prepare Turkish release notes
+        shell: pwsh
+        run: |
+          @"
+          KozaBluetooth ${env:GITHUB_REF_NAME}
+
+          ## Ozet
+          - Windows x64 icin tek dosya EXE paketi eklendi.
+          - Bluetooth Classic (HC-05/HC-06) ve BLE destegi bu surumde mevcuttur.
+
+          ## Kurulum
+          1. Asagidaki varliklardan KozaBluetooth-win-x64.zip dosyasini indirin.
+          2. Zip dosyasini klasore cikartin.
+          3. KozaBluetooth.exe dosyasini calistirin.
+
+          ## Notlar
+          - Uygulama Windows 10/11 icin hedeflenmistir.
+          - HC-05/HC-06 baglantisi icin gerekirse COM veya RFCOMM kullanin.
+          "@ | Set-Content -Path artifacts/release-notes.md -Encoding UTF8
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          name: KozaBluetooth ${{ github.ref_name }}
+          body_path: artifacts/release-notes.md
           files: artifacts/KozaBluetooth-win-x64.zip
-          generate_release_notes: true
