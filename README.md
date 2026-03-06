@@ -1,57 +1,56 @@
 # KozaBluetooth
 
-Windows 10/11 desktop app for Bluetooth Classic (HC-05/HC-06 over COM or RFCOMM) and BLE sensors.
+KozaBluetooth, Windows 10/11 uzerinde Bluetooth Classic (HC-05/HC-06) ve BLE cihazlariyla haberlesmek icin gelistirilmis masaustu terminal uygulamasidir.
 
 Repository: https://github.com/eekilinc/KozaBluetooh
 
-## Features
-- Scan Classic serial ports and BLE devices
-- List paired Classic Bluetooth device names (best-effort)
-- Classic connect supports both COM and direct RFCOMM (SPP)
-- Connect/disconnect and reconnect
-- Send free text commands
-- Quick command buttons: START, STOP, STATUS, RESET
-- Real-time data flow panel (incoming, outgoing, error)
-- TX/RX/error log panel
-- Turkish UI labels and status texts
-- Runtime language switch (Turkish / English)
-- Export live flow to CSV and logs to TXT
-- Connection settings panel (COM, baud, BLE service/characteristic)
-- Built-in simulator for testing without hardware
-- Quick link button to Windows Bluetooth settings
-- Git branch/hash shown in status bar
-- GitHub Actions workflow publishes downloadable Windows EXE artifact
+## Ozellikler
+- Classic cihaz tarama (COM port ve eslesmis cihaz listesi)
+- BLE cihaz tarama, servis/characteristic secimi
+- Classic baglanti: COM veya dogrudan RFCOMM (SPP)
+- Baglan / Baglantiyi Kes / Yeniden Baglan
+- Komut gonderme: ASCII veya HEX, satir sonu secenekleri (NONE, LF, CR, CRLF)
+- Hazir komut butonlari: START, STOP, STATUS, RESET
+- Canli veri akis ekrani (gelen/giden event bazli)
+- Log ve hata kayit ekrani
+- CSV/TXT disa aktarma
+- Turkce/Ing. dil secimi
+- Simulasyon cihazi ile donanim olmadan test
+- Durum cubugunda git branch/hash bilgisi
 
-## Build and run
+## Derleme ve Calistirma
 ```bash
 dotnet restore
 dotnet build
 dotnet run --project src/BluetoothDeskApp/BluetoothDeskApp.csproj
 ```
 
-## HC-05 / HC-06 notes
-1. Pair the module in Windows Bluetooth settings first.
-2. Find assigned COM port in Device Manager -> Ports (COM & LPT).
-3. Select the same COM port and baud rate in the app.
-
-If no COM port is available, app will try direct RFCOMM connect for paired Classic devices.
-
-## BLE notes
-- Use scan to find device.
-- Connect, then load services and characteristics.
-- Select the read/write characteristic and apply selection.
-
-## Tests
+## Test
 ```bash
 dotnet test
 ```
 
-## Git setup
+## HC-05 / HC-06 Notlari
+1. Once Windows Bluetooth ayarlarindan cihazi eslestirin.
+2. Aygit Yoneticisi > Ports (COM & LPT) altindan COM portu kontrol edin.
+3. Uygulamada ayni COM ve dogru baud degerini secin (genelde 9600).
+4. COM yoksa uygulama eslesmis cihaz icin dogrudan RFCOMM baglantisini dener.
+
+## BLE Notlari
+1. BLE tara ile cihazi bulun.
+2. Baglandiktan sonra servisleri ve characteristic'leri yukleyin.
+3. Write/Notify characteristic secip uygulayin.
+
+## GitHub Actions
+- `Build Windows EXE` workflow'u, `main` branch'e push oldugunda EXE artifact uretir.
+- `Release on Tag` workflow'u, tag atildiginda (`v1.0.0` gibi) GitHub Release olusturur ve EXE zip dosyasini ekler.
+
+## Release Alma (Tag ile)
+Asagidaki komutlar release tetikler:
+
 ```bash
-git init
-git add .
-git commit -m "Initial BluetoothDeskApp scaffold"
-git branch -M main
-git remote add origin https://github.com/<username>/<repo>.git
-git push -u origin main
+git tag v1.0.0
+git push origin v1.0.0
 ```
+
+Ardindan GitHub Releases sayfasinda otomatik olusan surume indirilebilir EXE zip eklenecektir.

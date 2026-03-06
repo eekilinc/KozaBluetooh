@@ -1,0 +1,40 @@
+name: Release on Tag
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore
+        run: dotnet restore BluetoothDeskApp.sln
+
+      - name: Build
+        run: dotnet build BluetoothDeskApp.sln -c Release --no-restore
+
+      - name: Publish EXE
+        run: dotnet publish src/BluetoothDeskApp/BluetoothDeskApp.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/win-x64
+
+      - name: Archive EXE
+        run: powershell -Command "Compress-Archive -Path artifacts/win-x64/* -DestinationPath artifacts/KozaBluetooth-win-x64.zip -Force"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/KozaBluetooth-win-x64.zip
+          generate_release_notes: true
