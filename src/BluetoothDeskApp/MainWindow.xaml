@@ -166,6 +166,11 @@
         <TextBlock Text="{Binding BleCharacteristicText}" Margin="4,4,4,2" />
         <ComboBox Margin="4,2" ItemsSource="{Binding BleCharacteristics}" SelectedItem="{Binding SelectedBleCharacteristic}" />
 
+        <TextBlock Text="{Binding BleWriteModeText}" Margin="4,4,4,2" />
+        <ComboBox Margin="4,2" ItemsSource="{Binding BleWriteModeOptions}" SelectedItem="{Binding SelectedBleWriteMode}" />
+
+        <CheckBox Margin="4,6,4,0" Content="{Binding AutoReconnectText}" IsChecked="{Binding AutoReconnectEnabled}" />
+
         <WrapPanel Margin="0,6,0,0">
           <Button Content="{Binding LoadServicesText}" Background="#2A9D8F" BorderBrush="#2A9D8F" Command="{Binding LoadBleServicesCommand}" />
           <Button Content="{Binding LoadCharsText}" Background="#2A9D8F" BorderBrush="#2A9D8F" Command="{Binding LoadBleCharacteristicsCommand}" />
@@ -174,6 +179,7 @@
 
         <Separator Margin="4,10" />
         <TextBlock Text="{Binding AboutTitle}" FontSize="16" FontWeight="SemiBold" Margin="4,4,4,6" Foreground="{StaticResource TextPrimaryBrush}" />
+        <CheckBox Margin="4,0,4,6" Content="{Binding HealthTelemetryText}" IsChecked="{Binding EnableHealthTelemetry}" />
         <Border Background="#F7FAF9" CornerRadius="8" Padding="8" Margin="4,0,4,4">
           <TextBlock Text="{Binding AboutText}" TextWrapping="Wrap" Foreground="#34444D" />
         </Border>
@@ -219,6 +225,7 @@
       <GroupBox Grid.Row="2" Header="{Binding LiveFlowTitle}" Margin="0,0,0,8" FontWeight="SemiBold" Background="{StaticResource PanelBrush}">
         <DockPanel>
           <WrapPanel DockPanel.Dock="Top" HorizontalAlignment="Right" Margin="0,0,0,6">
+            <Button Content="{Binding ClearFlowText}" Background="#607D8B" BorderBrush="#607D8B" Command="{Binding ClearTrafficCommand}" />
             <Button Content="{Binding ExportFlowText}" Background="#2A9D8F" BorderBrush="#2A9D8F" Command="{Binding ExportTrafficCsvCommand}" />
           </WrapPanel>
           <DataGrid ItemsSource="{Binding Traffic}" IsReadOnly="True" AutoGenerateColumns="False" RowHeight="30" HeadersVisibility="Column" RowStyle="{StaticResource FlowRowStyle}">
@@ -234,6 +241,7 @@
       <GroupBox Grid.Row="3" Header="{Binding LogTitle}" FontWeight="SemiBold" Background="{StaticResource PanelBrush}">
         <DockPanel>
           <WrapPanel DockPanel.Dock="Top" HorizontalAlignment="Right" Margin="0,0,0,6">
+            <Button Content="{Binding ClearLogsText}" Background="#607D8B" BorderBrush="#607D8B" Command="{Binding ClearLogsCommand}" />
             <Button Content="{Binding ExportLogText}" Background="#457B9D" BorderBrush="#457B9D" Command="{Binding ExportLogsTxtCommand}" />
           </WrapPanel>
           <DataGrid ItemsSource="{Binding Logs}" IsReadOnly="True" AutoGenerateColumns="False" RowHeight="30" HeadersVisibility="Column">

@@ -1,3 +1,5 @@
+using BluetoothDeskApp.Models;
+
 namespace BluetoothDeskApp.Services;
 
 public interface IBleBluetoothService
@@ -10,7 +12,7 @@ public interface IBleBluetoothService
     Task ConnectAsync(ulong address);
     Task<IReadOnlyList<Guid>> GetServicesAsync();
     Task<IReadOnlyList<Guid>> GetCharacteristicsAsync(Guid serviceId);
-    Task ConfigureIoAsync(Guid serviceId, Guid characteristicId);
+    Task ConfigureIoAsync(Guid serviceId, Guid characteristicId, BleWriteMode writeMode = BleWriteMode.Auto);
     Task SendAsync(string text);
     Task SendBytesAsync(byte[] bytes);
     Task DisconnectAsync();

@@ -1,4 +1,5 @@
 using System.Text;
+using BluetoothDeskApp.Models;
 using Windows.Devices.Bluetooth;
 using Windows.Devices.Bluetooth.Advertisement;
 using Windows.Devices.Bluetooth.GenericAttributeProfile;
@@ -10,6 +11,7 @@ public class BleBluetoothService : IBleBluetoothService
 {
     private BluetoothLEDevice? _device;
     private GattCharacteristic? _ioCharacteristic;
+    private BleWriteMode _writeMode = BleWriteMode.Auto;
 
     public event Action<string>? DataReceived;
     public event Action<string>? ErrorOccurred;
@@ -91,7 +93,7 @@ public class BleBluetoothService : IBleBluetoothService
         return charsResult.Characteristics.Select(c => c.Uuid).ToList();
     }
 
-    public async Task ConfigureIoAsync(Guid serviceId, Guid characteristicId)
+    public async Task ConfigureIoAsync(Guid serviceId, Guid characteristicId, BleWriteMode writeMode = BleWriteMode.Auto)
     {
         if (_device == null)
         {
@@ -111,6 +113,8 @@ public class BleBluetoothService : IBleBluetoothService
         {
             throw new InvalidOperationException("Characteristic not found.");
         }
+
+        _writeMode = writeMode;
 
         _ioCharacteristic.ValueChanged -= IoCharacteristicOnValueChanged;
         _ioCharacteristic.ValueChanged += IoCharacteristicOnValueChanged;
@@ -137,12 +141,36 @@ public class BleBluetoothService : IBleBluetoothService
         }
 
         var buffer = CryptographicBuffer.CreateFromByteArray(bytes);
+        var option = ResolveWriteOption(_ioCharacteristic);
 
-        var result = await _ioCharacteristic.WriteValueAsync(buffer, GattWriteOption.WriteWithoutResponse);
+        var result = await _ioCharacteristic.WriteValueAsync(buffer, option);
+        if (result != GattCommunicationStatus.Success && option == GattWriteOption.WriteWithoutResponse)
+        {
+            result = await _ioCharacteristic.WriteValueAsync(buffer, GattWriteOption.WriteWithResponse);
+        }
+
         if (result != GattCommunicationStatus.Success)
         {
             throw new InvalidOperationException($"BLE write failed: {result}");
         }
+    }
+
+    private GattWriteOption ResolveWriteOption(GattCharacteristic characteristic)
+    {
+        var props = characteristic.CharacteristicProperties;
+        var canWithout = props.HasFlag(GattCharacteristicProperties.WriteWithoutResponse);
+        var canWith = props.HasFlag(GattCharacteristicProperties.Write);
+
+        return _writeMode switch
+        {
+            BleWriteMode.WriteWithResponse when canWith => GattWriteOption.WriteWithResponse,
+            BleWriteMode.WriteWithoutResponse when canWithout => GattWriteOption.WriteWithoutResponse,
+            BleWriteMode.WriteWithResponse => throw new InvalidOperationException("Characteristic WriteWithResponse desteklemiyor."),
+            BleWriteMode.WriteWithoutResponse => throw new InvalidOperationException("Characteristic WriteWithoutResponse desteklemiyor."),
+            _ when canWithout => GattWriteOption.WriteWithoutResponse,
+            _ when canWith => GattWriteOption.WriteWithResponse,
+            _ => throw new InvalidOperationException("Characteristic yazma desteklemiyor.")
+        };
     }
 
     public async Task DisconnectAsync()

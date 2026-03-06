@@ -10,9 +10,13 @@ Repository: https://github.com/eekilinc/KozaBluetooh
 - Classic baglanti: COM veya dogrudan RFCOMM (SPP)
 - Baglan / Baglantiyi Kes / Yeniden Baglan
 - Komut gonderme: ASCII veya HEX, satir sonu secenekleri (NONE, LF, CR, CRLF)
+- BLE yazma modu secimi: Auto / WriteWithoutResponse / WriteWithResponse
 - Hazir komut butonlari: START, STOP, STATUS, RESET
 - Canli veri akis ekrani (gelen/giden event bazli)
 - Log ve hata kayit ekrani
+- Canli akis ve log icin temizleme (Clear) butonlari
+- Yeniden baglanmada retry/backoff politikasi
+- Opsiyonel saglik telemetrisi (TX/RX/HATA/RECONNECT)
 - CSV/TXT disa aktarma
 - Turkce/Ing. dil secimi
 - Simulasyon cihazi ile donanim olmadan test

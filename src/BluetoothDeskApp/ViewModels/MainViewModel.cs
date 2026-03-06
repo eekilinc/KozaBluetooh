@@ -44,6 +44,7 @@ public class MainViewModel : ObservableObject
     private string _sendText = "Gönder";
     private string _sendModeText = "Gönderim Modu";
     private string _lineEndingText = "Satır Sonu";
+    private string _bleWriteModeText = "BLE Yazma Modu";
     private string _comPortText = "COM Port";
     private string _baudRateText = "Baud Rate";
     private string _bleServiceText = "BLE Servis";
@@ -54,7 +55,11 @@ public class MainViewModel : ObservableObject
     private string _languageLabelText = "Dil";
     private string _exportFlowText = "Akış CSV";
     private string _exportLogText = "Log TXT";
+    private string _clearFlowText = "Akışı Temizle";
+    private string _clearLogsText = "Logu Temizle";
     private string _hexHintText = "HEX örnek: AA 01 0D 0A";
+    private string _autoReconnectText = "Otomatik Yeniden Bağlan";
+    private string _healthTelemetryText = "Health Telemetry";
 
     private string? _selectedComPort;
     private int _selectedBaudRate = 9600;
@@ -62,6 +67,16 @@ public class MainViewModel : ObservableObject
     private Guid? _selectedBleCharacteristic;
     private string _selectedCommandMode = "ASCII";
     private string _selectedLineEnding = "CRLF";
+    private BleWriteMode _selectedBleWriteMode = BleWriteMode.Auto;
+    private bool _autoReconnectEnabled = true;
+    private bool _enableHealthTelemetry = true;
+    private bool _isReconnectInProgress;
+    private bool _isManualDisconnect;
+
+    private int _txCount;
+    private int _rxCount;
+    private int _errorCount;
+    private int _reconnectCount;
 
     private DeviceTransport? _activeTransport;
     private DeviceTransport? _lastTransport;
@@ -77,6 +92,7 @@ public class MainViewModel : ObservableObject
     public ObservableCollection<string> LanguageOptions { get; } = new() { "Türkçe", "English" };
     public ObservableCollection<string> CommandModeOptions { get; } = new() { "ASCII", "HEX" };
     public ObservableCollection<string> LineEndingOptions { get; } = new() { "NONE", "LF", "CR", "CRLF" };
+    public ObservableCollection<BleWriteMode> BleWriteModeOptions { get; } = new() { BleWriteMode.Auto, BleWriteMode.WriteWithoutResponse, BleWriteMode.WriteWithResponse };
 
     public ObservableCollection<string> ClassicPorts { get; } = new();
     public ObservableCollection<int> BaudRates { get; } = new() { 9600, 19200, 38400, 57600, 115200 };
@@ -129,6 +145,30 @@ public class MainViewModel : ObservableObject
     {
         get => _selectedLineEnding;
         set => SetProperty(ref _selectedLineEnding, value);
+    }
+
+    public BleWriteMode SelectedBleWriteMode
+    {
+        get => _selectedBleWriteMode;
+        set => SetProperty(ref _selectedBleWriteMode, value);
+    }
+
+    public bool AutoReconnectEnabled
+    {
+        get => _autoReconnectEnabled;
+        set => SetProperty(ref _autoReconnectEnabled, value);
+    }
+
+    public bool EnableHealthTelemetry
+    {
+        get => _enableHealthTelemetry;
+        set
+        {
+            if (SetProperty(ref _enableHealthTelemetry, value))
+            {
+                RefreshAboutText();
+            }
+        }
     }
 
     public string StatusText
@@ -197,6 +237,7 @@ public class MainViewModel : ObservableObject
     public string SendText { get => _sendText; set => SetProperty(ref _sendText, value); }
     public string SendModeText { get => _sendModeText; set => SetProperty(ref _sendModeText, value); }
     public string LineEndingText { get => _lineEndingText; set => SetProperty(ref _lineEndingText, value); }
+    public string BleWriteModeText { get => _bleWriteModeText; set => SetProperty(ref _bleWriteModeText, value); }
     public string ComPortText { get => _comPortText; set => SetProperty(ref _comPortText, value); }
     public string BaudRateText { get => _baudRateText; set => SetProperty(ref _baudRateText, value); }
     public string BleServiceText { get => _bleServiceText; set => SetProperty(ref _bleServiceText, value); }
@@ -207,7 +248,11 @@ public class MainViewModel : ObservableObject
     public string LanguageLabelText { get => _languageLabelText; set => SetProperty(ref _languageLabelText, value); }
     public string ExportFlowText { get => _exportFlowText; set => SetProperty(ref _exportFlowText, value); }
     public string ExportLogText { get => _exportLogText; set => SetProperty(ref _exportLogText, value); }
+    public string ClearFlowText { get => _clearFlowText; set => SetProperty(ref _clearFlowText, value); }
+    public string ClearLogsText { get => _clearLogsText; set => SetProperty(ref _clearLogsText, value); }
     public string HexHintText { get => _hexHintText; set => SetProperty(ref _hexHintText, value); }
+    public string AutoReconnectText { get => _autoReconnectText; set => SetProperty(ref _autoReconnectText, value); }
+    public string HealthTelemetryText { get => _healthTelemetryText; set => SetProperty(ref _healthTelemetryText, value); }
 
     public AsyncRelayCommand ScanClassicCommand { get; }
     public AsyncRelayCommand ScanBleCommand { get; }
@@ -225,6 +270,8 @@ public class MainViewModel : ObservableObject
     public AsyncRelayCommand ApplyBleSelectionCommand { get; }
     public RelayCommand ExportTrafficCsvCommand { get; }
     public RelayCommand ExportLogsTxtCommand { get; }
+    public RelayCommand ClearTrafficCommand { get; }
+    public RelayCommand ClearLogsCommand { get; }
     public RelayCommand OpenBluetoothSettingsCommand { get; }
 
     public MainViewModel(
@@ -262,6 +309,8 @@ public class MainViewModel : ObservableObject
         ApplyBleSelectionCommand = new AsyncRelayCommand(ApplyBleSelectionAsync);
         ExportTrafficCsvCommand = new RelayCommand(ExportTrafficCsv);
         ExportLogsTxtCommand = new RelayCommand(ExportLogsTxt);
+        ClearTrafficCommand = new RelayCommand(ClearTraffic);
+        ClearLogsCommand = new RelayCommand(ClearLogs);
         OpenBluetoothSettingsCommand = new RelayCommand(OpenBluetoothSettings);
 
         UpdateUiTexts();
@@ -439,6 +488,7 @@ public class MainViewModel : ObservableObject
 
     private async Task DisconnectAsync()
     {
+        _isManualDisconnect = true;
         try
         {
             switch (_activeTransport)
@@ -462,53 +512,70 @@ public class MainViewModel : ObservableObject
         {
             OnError($"Bağlantı kesme hatası: {ex.Message}");
         }
+        finally
+        {
+            _isManualDisconnect = false;
+        }
     }
 
     private async Task ReconnectAsync()
     {
+        if (_isReconnectInProgress)
+        {
+            return;
+        }
+
+        _isReconnectInProgress = true;
         try
         {
             await DisconnectAsync();
             SetStatus(ConnectionState.Connecting);
 
-            switch (_lastTransport)
+            var delays = new[] { 0, 1000, 2500, 5000 };
+            Exception? lastError = null;
+
+            for (var attempt = 0; attempt < delays.Length; attempt++)
             {
-                case DeviceTransport.ClassicSerial:
-                    if (!string.IsNullOrWhiteSpace(_lastComPort))
+                try
+                {
+                    if (attempt > 0)
                     {
-                        await _classic.ConnectAsync(_lastComPort, _lastBaudRate);
-                        _activeTransport = DeviceTransport.ClassicSerial;
+                        AddLog("BILGI", $"Yeniden bağlanma denemesi {attempt + 1}/{delays.Length}...");
                     }
-                    else if (!string.IsNullOrWhiteSpace(_lastClassicDeviceId))
+
+                    if (delays[attempt] > 0)
                     {
-                        await _classic.ConnectToPairedDeviceAsync(_lastClassicDeviceId);
-                        _activeTransport = DeviceTransport.ClassicSerial;
+                        await Task.Delay(delays[attempt]);
                     }
-                    break;
-                case DeviceTransport.Ble:
-                    if (_lastBleAddress.HasValue)
-                    {
-                        await _ble.ConnectAsync(_lastBleAddress.Value);
-                        _activeTransport = DeviceTransport.Ble;
-                    }
-                    break;
-                case DeviceTransport.Simulator:
-                    await _sim.ConnectAsync();
-                    _activeTransport = DeviceTransport.Simulator;
-                    break;
-                default:
-                    AddLog("UYARI", "Yeniden bağlanmak için önceki bağlantı bulunamadı.");
-                    SetStatus(ConnectionState.Disconnected);
+
+                    await ConnectLastKnownAsync();
+                    _reconnectCount++;
+                    SetStatus(ConnectionState.Connected);
+                    AddLog("BILGI", "Yeniden bağlandı.");
+                    RefreshAboutText();
                     return;
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                    AddLog("UYARI", $"Yeniden bağlanma denemesi başarısız: {ex.Message}");
+                }
             }
 
-            SetStatus(ConnectionState.Connected);
-            AddLog("BILGI", "Yeniden bağlandı.");
+            SetStatus(ConnectionState.Error);
+            if (lastError != null)
+            {
+                OnError($"Yeniden bağlanma hatası: {lastError.Message}");
+            }
         }
         catch (Exception ex)
         {
             SetStatus(ConnectionState.Error);
             OnError($"Yeniden bağlanma hatası: {ex.Message}");
+        }
+        finally
+        {
+            _isReconnectInProgress = false;
         }
     }
 
@@ -554,6 +621,8 @@ public class MainViewModel : ObservableObject
 
             AddTraffic("GIDEN", sendPreview);
             AddLog("GIDEN", $"[{SelectedCommandMode}/{SelectedLineEnding}] {sendPreview}");
+            _txCount++;
+            RefreshAboutText();
         }
         catch (Exception ex)
         {
@@ -561,68 +630,46 @@ public class MainViewModel : ObservableObject
         }
     }
 
-    private byte[] BuildPayload(string input)
+    private byte[] BuildPayload(string input) => CommandPayloadBuilder.Build(input, SelectedCommandMode, SelectedLineEnding);
+
+    private async Task ConnectLastKnownAsync()
     {
-        byte[] body;
-        if (SelectedCommandMode == "HEX")
+        switch (_lastTransport)
         {
-            body = ParseHex(input);
-        }
-        else
-        {
-            body = Encoding.ASCII.GetBytes(input);
-        }
+            case DeviceTransport.ClassicSerial:
+                if (!string.IsNullOrWhiteSpace(_lastComPort))
+                {
+                    await _classic.ConnectAsync(_lastComPort, _lastBaudRate);
+                    _activeTransport = DeviceTransport.ClassicSerial;
+                    return;
+                }
 
-        var ending = SelectedLineEnding switch
-        {
-            "LF" => new byte[] { 0x0A },
-            "CR" => new byte[] { 0x0D },
-            "CRLF" => new byte[] { 0x0D, 0x0A },
-            _ => Array.Empty<byte>()
-        };
+                if (!string.IsNullOrWhiteSpace(_lastClassicDeviceId))
+                {
+                    await _classic.ConnectToPairedDeviceAsync(_lastClassicDeviceId);
+                    _activeTransport = DeviceTransport.ClassicSerial;
+                    return;
+                }
 
-        if (ending.Length == 0)
-        {
-            return body;
-        }
+                break;
 
-        var combined = new byte[body.Length + ending.Length];
-        Buffer.BlockCopy(body, 0, combined, 0, body.Length);
-        Buffer.BlockCopy(ending, 0, combined, body.Length, ending.Length);
-        return combined;
-    }
+            case DeviceTransport.Ble:
+                if (_lastBleAddress.HasValue)
+                {
+                    await _ble.ConnectAsync(_lastBleAddress.Value);
+                    _activeTransport = DeviceTransport.Ble;
+                    return;
+                }
 
-    private static byte[] ParseHex(string input)
-    {
-        var cleaned = input
-            .Replace("0x", string.Empty, StringComparison.OrdinalIgnoreCase)
-            .Replace(" ", string.Empty)
-            .Replace("-", string.Empty)
-            .Replace(",", string.Empty)
-            .Trim();
+                break;
 
-        if (string.IsNullOrWhiteSpace(cleaned))
-        {
-            throw new InvalidOperationException("HEX veri boş olamaz.");
+            case DeviceTransport.Simulator:
+                await _sim.ConnectAsync();
+                _activeTransport = DeviceTransport.Simulator;
+                return;
         }
 
-        if (cleaned.Length % 2 != 0)
-        {
-            throw new InvalidOperationException("HEX uzunluğu çift olmalı. Örnek: AA01FF");
-        }
-
-        var bytes = new byte[cleaned.Length / 2];
-        for (var i = 0; i < cleaned.Length; i += 2)
-        {
-            if (!byte.TryParse(cleaned.Substring(i, 2), System.Globalization.NumberStyles.HexNumber, null, out var b))
-            {
-                throw new InvalidOperationException($"Geçersiz HEX byte: {cleaned.Substring(i, 2)}");
-            }
-
-            bytes[i / 2] = b;
-        }
-
-        return bytes;
+        throw new InvalidOperationException("Yeniden bağlanmak için önceki bağlantı bilgisi eksik.");
     }
 
     private async Task LoadBleServicesAsync()
@@ -679,7 +726,7 @@ public class MainViewModel : ObservableObject
 
         try
         {
-            await _ble.ConfigureIoAsync(SelectedBleService.Value, SelectedBleCharacteristic.Value);
+            await _ble.ConfigureIoAsync(SelectedBleService.Value, SelectedBleCharacteristic.Value, SelectedBleWriteMode);
             AddLog("BILGI", "BLE I/O karakteristiği yapılandırıldı.");
         }
         catch (Exception ex)
@@ -699,6 +746,8 @@ public class MainViewModel : ObservableObject
 
             AddTraffic("GELEN", text);
             AddLog("GELEN", text);
+            _rxCount++;
+            RefreshAboutText();
         });
     }
 
@@ -706,8 +755,15 @@ public class MainViewModel : ObservableObject
     {
         App.Current.Dispatcher.Invoke(() =>
         {
+            _errorCount++;
             SetStatus(ConnectionState.Error);
             AddLog("HATA", message);
+            RefreshAboutText();
+
+            if (AutoReconnectEnabled && !_isManualDisconnect && !_isReconnectInProgress && _activeTransport != null && _lastTransport != null)
+            {
+                _ = ReconnectAsync();
+            }
         });
     }
 
@@ -832,6 +888,18 @@ public class MainViewModel : ObservableObject
         }
     }
 
+    private void ClearTraffic()
+    {
+        Traffic.Clear();
+        AddLog("BILGI", L("Canlı akış temizlendi.", "Live flow cleared."));
+    }
+
+    private void ClearLogs()
+    {
+        Logs.Clear();
+        AddLog("BILGI", L("Log kayıtları temizlendi.", "Logs cleared."));
+    }
+
     private void ExportLogsTxt()
     {
         try
@@ -883,7 +951,10 @@ public class MainViewModel : ObservableObject
         SendText = L("Gönder", "Send");
         SendModeText = L("Gönderim Modu", "Send Mode");
         LineEndingText = L("Satır Sonu", "Line Ending");
+        BleWriteModeText = L("BLE Yazma Modu", "BLE Write Mode");
         HexHintText = L("HEX örnek: AA 01 0D 0A", "HEX example: AA 01 0D 0A");
+        AutoReconnectText = L("Otomatik Yeniden Bağlan", "Auto Reconnect");
+        HealthTelemetryText = L("Sağlık Telemetrisi", "Health Telemetry");
 
         ComPortText = "COM Port";
         BaudRateText = "Baud Rate";
@@ -895,15 +966,21 @@ public class MainViewModel : ObservableObject
         LanguageLabelText = L("Dil", "Language");
         ExportFlowText = L("Akış CSV", "Flow CSV");
         ExportLogText = L("Log TXT", "Log TXT");
+        ClearFlowText = L("Akışı Temizle", "Clear Flow");
+        ClearLogsText = L("Logu Temizle", "Clear Logs");
 
         RefreshAboutText();
     }
 
     private void RefreshAboutText()
     {
+        var telemetryLine = EnableHealthTelemetry
+            ? $"\nTelemetri: TX={_txCount}, RX={_rxCount}, HATA={_errorCount}, RECONNECT={_reconnectCount}"
+            : string.Empty;
+
         AboutText = L(
-            "KozaBluetooth\nWindows 10/11 için Classic Bluetooth (HC-05/HC-06) ve BLE terminal uygulaması.\nGeliştirici: Koza Akademi\n" + GitInfoText + "\nRepo: https://github.com/eekilinc/KozaBluetooh",
-            "KozaBluetooth\nClassic Bluetooth (HC-05/HC-06) and BLE terminal app for Windows 10/11.\nDeveloper: Koza Akademi\n" + GitInfoText + "\nRepo: https://github.com/eekilinc/KozaBluetooh");
+            "KozaBluetooth\nWindows 10/11 için Classic Bluetooth (HC-05/HC-06) ve BLE terminal uygulaması.\nGeliştirici: Koza Akademi\n" + GitInfoText + "\nRepo: https://github.com/eekilinc/KozaBluetooh" + telemetryLine,
+            "KozaBluetooth\nClassic Bluetooth (HC-05/HC-06) and BLE terminal app for Windows 10/11.\nDeveloper: Koza Akademi\n" + GitInfoText + "\nRepo: https://github.com/eekilinc/KozaBluetooh" + telemetryLine);
     }
 
     private void RemoveDevicesByTransport(DeviceTransport transport)
