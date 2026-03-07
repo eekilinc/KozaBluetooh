@@ -2,7 +2,6 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{Binding AppWindowTitle}" Height="780" Width="1260" WindowStartupLocation="CenterScreen" WindowState="Maximized"
-        Icon="{StaticResource AppIcon}"
         Background="#F2F5F7" FontFamily="Bahnschrift">
   <Window.Resources>
     <DrawingImage x:Key="AppIcon">

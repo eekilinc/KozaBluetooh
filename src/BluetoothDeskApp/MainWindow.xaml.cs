@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Media;
 using BluetoothDeskApp.Services;
 using BluetoothDeskApp.ViewModels;
 
@@ -19,6 +20,11 @@ public partial class MainWindow : Window
             new GitInfoService());
 
         DataContext = _vm;
+
+        if (TryFindResource("AppIcon") is ImageSource appIcon)
+        {
+            Icon = appIcon;
+        }
     }
 
     private void OnExitClick(object sender, RoutedEventArgs e)
