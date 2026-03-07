@@ -12,7 +12,11 @@ Repository: https://github.com/eekilinc/KozaBluetooh
 - Komut gonderme: ASCII veya HEX, satir sonu secenekleri (NONE, LF, CR, CRLF)
 - BLE yazma modu secimi: Auto / WriteWithoutResponse / WriteWithResponse
 - Hazir komut butonlari: START, STOP, STATUS, RESET
+- Profil kaydetme/uygulama/silme
+- Makro kaydetme ve tek tikla coklu komut calistirma
+- Zamanli (periyodik) komut gonderimi
 - Canli veri akis ekrani (gelen/giden event bazli)
+- Canli akis filtreleme (tip + anahtar kelime)
 - Log ve hata kayit ekrani
 - Canli akis ve log icin temizleme (Clear) butonlari
 - Yeniden baglanmada retry/backoff politikasi

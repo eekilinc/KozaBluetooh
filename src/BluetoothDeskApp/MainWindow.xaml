@@ -125,6 +125,15 @@
           <Button Content="{Binding OpenBtSettingsText}" Background="#3E5C76" BorderBrush="#3E5C76" Command="{Binding OpenBluetoothSettingsCommand}" />
         </WrapPanel>
 
+        <TextBlock Text="{Binding ProfilesTitleText}" FontSize="16" FontWeight="SemiBold" Margin="4,8,4,4" Foreground="{StaticResource TextPrimaryBrush}" />
+        <TextBox Margin="4,2" Text="{Binding ProfileNameInput, UpdateSourceTrigger=PropertyChanged}" />
+        <ComboBox Margin="4,2" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" DisplayMemberPath="Name" />
+        <WrapPanel>
+          <Button Content="{Binding SaveProfileText}" Background="#006D77" BorderBrush="#006D77" Command="{Binding SaveProfileCommand}" />
+          <Button Content="{Binding ApplyProfileText}" Background="#588157" BorderBrush="#588157" Command="{Binding ApplyProfileCommand}" />
+          <Button Content="{Binding DeleteProfileText}" Background="#A44A3F" BorderBrush="#A44A3F" Command="{Binding DeleteProfileCommand}" />
+        </WrapPanel>
+
         <ListBox Height="240" Margin="4,6,4,8"
                  ItemsSource="{Binding Devices}"
                  SelectedItem="{Binding SelectedDevice}">
@@ -219,16 +228,42 @@
             <Button Content="STATUS" Background="#457B9D" BorderBrush="#457B9D" Command="{Binding SendPresetStatusCommand}" />
             <Button Content="RESET" Background="#6D597A" BorderBrush="#6D597A" Command="{Binding SendPresetResetCommand}" />
           </WrapPanel>
+
+          <TextBlock Text="{Binding MacroTitleText}" Margin="4,10,4,2" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+          <WrapPanel>
+            <TextBox Width="180" Text="{Binding MacroNameInput, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBox Width="340" Text="{Binding MacroCommandsInput, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBox Width="90" Text="{Binding MacroDelayMs, UpdateSourceTrigger=PropertyChanged}" />
+          </WrapPanel>
+          <WrapPanel>
+            <ComboBox Width="220" ItemsSource="{Binding Macros}" SelectedItem="{Binding SelectedMacro}" DisplayMemberPath="Name" />
+            <Button Content="{Binding RunMacroText}" Background="#3D5A80" BorderBrush="#3D5A80" Command="{Binding RunMacroCommand}" />
+            <Button Content="{Binding SaveMacroText}" Background="#2A9D8F" BorderBrush="#2A9D8F" Command="{Binding SaveMacroCommand}" />
+            <Button Content="{Binding DeleteMacroText}" Background="#BC4749" BorderBrush="#BC4749" Command="{Binding DeleteMacroCommand}" />
+          </WrapPanel>
+
+          <TextBlock Text="{Binding SchedulerTitleText}" Margin="4,10,4,2" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}" />
+          <WrapPanel>
+            <TextBox Width="340" Text="{Binding SchedulerCommand, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBox Width="100" Text="{Binding SchedulerIntervalMs, UpdateSourceTrigger=PropertyChanged}" />
+            <Button Content="{Binding StartSchedulerText}" Background="#2A9D8F" BorderBrush="#2A9D8F" Command="{Binding StartSchedulerCommand}" />
+            <Button Content="{Binding StopSchedulerText}" Background="#BC4749" BorderBrush="#BC4749" Command="{Binding StopSchedulerCommand}" />
+          </WrapPanel>
         </StackPanel>
       </Border>
 
       <GroupBox Grid.Row="2" Header="{Binding LiveFlowTitle}" Margin="0,0,0,8" FontWeight="SemiBold" Background="{StaticResource PanelBrush}">
         <DockPanel>
+          <WrapPanel DockPanel.Dock="Top" HorizontalAlignment="Left" Margin="0,0,0,6">
+            <TextBlock Text="{Binding TrafficFilterText}" VerticalAlignment="Center" Margin="2,0,8,0" />
+            <ComboBox Width="110" ItemsSource="{Binding TrafficFilterTypes}" SelectedItem="{Binding TrafficFilterType}" />
+            <TextBox Width="220" Text="{Binding TrafficFilterKeyword, UpdateSourceTrigger=PropertyChanged}" />
+          </WrapPanel>
           <WrapPanel DockPanel.Dock="Top" HorizontalAlignment="Right" Margin="0,0,0,6">
             <Button Content="{Binding ClearFlowText}" Background="#607D8B" BorderBrush="#607D8B" Command="{Binding ClearTrafficCommand}" />
             <Button Content="{Binding ExportFlowText}" Background="#2A9D8F" BorderBrush="#2A9D8F" Command="{Binding ExportTrafficCsvCommand}" />
           </WrapPanel>
-          <DataGrid ItemsSource="{Binding Traffic}" IsReadOnly="True" AutoGenerateColumns="False" RowHeight="30" HeadersVisibility="Column" RowStyle="{StaticResource FlowRowStyle}">
+          <DataGrid ItemsSource="{Binding TrafficView}" IsReadOnly="True" AutoGenerateColumns="False" RowHeight="30" HeadersVisibility="Column" RowStyle="{StaticResource FlowRowStyle}">
           <DataGrid.Columns>
             <DataGridTextColumn Header="Saat" Binding="{Binding Timestamp}" Width="150" />
             <DataGridTextColumn Header="Akış" Binding="{Binding Type}" Width="110" />

@@ -1,8 +1,11 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
+using System.Windows.Data;
 using System.Windows.Media;
 using BluetoothDeskApp.Infrastructure;
 using BluetoothDeskApp.Models;
@@ -60,6 +63,18 @@ public class MainViewModel : ObservableObject
     private string _hexHintText = "HEX örnek: AA 01 0D 0A";
     private string _autoReconnectText = "Otomatik Yeniden Bağlan";
     private string _healthTelemetryText = "Health Telemetry";
+    private string _profilesTitleText = "Profil";
+    private string _saveProfileText = "Profili Kaydet";
+    private string _applyProfileText = "Profili Uygula";
+    private string _deleteProfileText = "Profili Sil";
+    private string _macroTitleText = "Makro";
+    private string _runMacroText = "Makroyu Çalıştır";
+    private string _saveMacroText = "Makroyu Kaydet";
+    private string _deleteMacroText = "Makroyu Sil";
+    private string _schedulerTitleText = "Zamanlı Gönderim";
+    private string _startSchedulerText = "Başlat";
+    private string _stopSchedulerText = "Durdur";
+    private string _trafficFilterText = "Akış Filtresi";
 
     private string? _selectedComPort;
     private int _selectedBaudRate = 9600;
@@ -72,11 +87,24 @@ public class MainViewModel : ObservableObject
     private bool _enableHealthTelemetry = true;
     private bool _isReconnectInProgress;
     private bool _isManualDisconnect;
+    private CancellationTokenSource? _schedulerCts;
 
     private int _txCount;
     private int _rxCount;
     private int _errorCount;
     private int _reconnectCount;
+
+    private string _profileNameInput = "Varsayilan";
+    private ConnectionProfile? _selectedProfile;
+    private string _macroNameInput = "Yeni Makro";
+    private string _macroCommandsInput = "STATUS";
+    private int _macroDelayMs = 300;
+    private MacroCommand? _selectedMacro;
+    private string _schedulerCommand = "STATUS";
+    private int _schedulerIntervalMs = 1000;
+    private bool _isSchedulerRunning;
+    private string _trafficFilterKeyword = string.Empty;
+    private string _trafficFilterType = "ALL";
 
     private DeviceTransport? _activeTransport;
     private DeviceTransport? _lastTransport;
@@ -88,11 +116,15 @@ public class MainViewModel : ObservableObject
 
     public ObservableCollection<DiscoveredDevice> Devices { get; } = new();
     public ObservableCollection<LogEntry> Traffic { get; } = new();
+    public ICollectionView TrafficView { get; }
     public ObservableCollection<LogEntry> Logs { get; } = new();
     public ObservableCollection<string> LanguageOptions { get; } = new() { "Türkçe", "English" };
     public ObservableCollection<string> CommandModeOptions { get; } = new() { "ASCII", "HEX" };
     public ObservableCollection<string> LineEndingOptions { get; } = new() { "NONE", "LF", "CR", "CRLF" };
     public ObservableCollection<BleWriteMode> BleWriteModeOptions { get; } = new() { BleWriteMode.Auto, BleWriteMode.WriteWithoutResponse, BleWriteMode.WriteWithResponse };
+    public ObservableCollection<ConnectionProfile> Profiles { get; } = new();
+    public ObservableCollection<MacroCommand> Macros { get; } = new();
+    public ObservableCollection<string> TrafficFilterTypes { get; } = new() { "ALL", "GELEN", "GIDEN" };
 
     public ObservableCollection<string> ClassicPorts { get; } = new();
     public ObservableCollection<int> BaudRates { get; } = new() { 9600, 19200, 38400, 57600, 115200 };
@@ -167,6 +199,84 @@ public class MainViewModel : ObservableObject
             if (SetProperty(ref _enableHealthTelemetry, value))
             {
                 RefreshAboutText();
+            }
+        }
+    }
+
+    public string ProfileNameInput
+    {
+        get => _profileNameInput;
+        set => SetProperty(ref _profileNameInput, value);
+    }
+
+    public ConnectionProfile? SelectedProfile
+    {
+        get => _selectedProfile;
+        set => SetProperty(ref _selectedProfile, value);
+    }
+
+    public string MacroNameInput
+    {
+        get => _macroNameInput;
+        set => SetProperty(ref _macroNameInput, value);
+    }
+
+    public string MacroCommandsInput
+    {
+        get => _macroCommandsInput;
+        set => SetProperty(ref _macroCommandsInput, value);
+    }
+
+    public int MacroDelayMs
+    {
+        get => _macroDelayMs;
+        set => SetProperty(ref _macroDelayMs, value);
+    }
+
+    public MacroCommand? SelectedMacro
+    {
+        get => _selectedMacro;
+        set => SetProperty(ref _selectedMacro, value);
+    }
+
+    public string SchedulerCommand
+    {
+        get => _schedulerCommand;
+        set => SetProperty(ref _schedulerCommand, value);
+    }
+
+    public int SchedulerIntervalMs
+    {
+        get => _schedulerIntervalMs;
+        set => SetProperty(ref _schedulerIntervalMs, value);
+    }
+
+    public bool IsSchedulerRunning
+    {
+        get => _isSchedulerRunning;
+        set => SetProperty(ref _isSchedulerRunning, value);
+    }
+
+    public string TrafficFilterKeyword
+    {
+        get => _trafficFilterKeyword;
+        set
+        {
+            if (SetProperty(ref _trafficFilterKeyword, value))
+            {
+                TrafficView.Refresh();
+            }
+        }
+    }
+
+    public string TrafficFilterType
+    {
+        get => _trafficFilterType;
+        set
+        {
+            if (SetProperty(ref _trafficFilterType, value))
+            {
+                TrafficView.Refresh();
             }
         }
     }
@@ -253,6 +363,18 @@ public class MainViewModel : ObservableObject
     public string HexHintText { get => _hexHintText; set => SetProperty(ref _hexHintText, value); }
     public string AutoReconnectText { get => _autoReconnectText; set => SetProperty(ref _autoReconnectText, value); }
     public string HealthTelemetryText { get => _healthTelemetryText; set => SetProperty(ref _healthTelemetryText, value); }
+    public string ProfilesTitleText { get => _profilesTitleText; set => SetProperty(ref _profilesTitleText, value); }
+    public string SaveProfileText { get => _saveProfileText; set => SetProperty(ref _saveProfileText, value); }
+    public string ApplyProfileText { get => _applyProfileText; set => SetProperty(ref _applyProfileText, value); }
+    public string DeleteProfileText { get => _deleteProfileText; set => SetProperty(ref _deleteProfileText, value); }
+    public string MacroTitleText { get => _macroTitleText; set => SetProperty(ref _macroTitleText, value); }
+    public string RunMacroText { get => _runMacroText; set => SetProperty(ref _runMacroText, value); }
+    public string SaveMacroText { get => _saveMacroText; set => SetProperty(ref _saveMacroText, value); }
+    public string DeleteMacroText { get => _deleteMacroText; set => SetProperty(ref _deleteMacroText, value); }
+    public string SchedulerTitleText { get => _schedulerTitleText; set => SetProperty(ref _schedulerTitleText, value); }
+    public string StartSchedulerText { get => _startSchedulerText; set => SetProperty(ref _startSchedulerText, value); }
+    public string StopSchedulerText { get => _stopSchedulerText; set => SetProperty(ref _stopSchedulerText, value); }
+    public string TrafficFilterText { get => _trafficFilterText; set => SetProperty(ref _trafficFilterText, value); }
 
     public AsyncRelayCommand ScanClassicCommand { get; }
     public AsyncRelayCommand ScanBleCommand { get; }
@@ -272,6 +394,14 @@ public class MainViewModel : ObservableObject
     public RelayCommand ExportLogsTxtCommand { get; }
     public RelayCommand ClearTrafficCommand { get; }
     public RelayCommand ClearLogsCommand { get; }
+    public RelayCommand SaveProfileCommand { get; }
+    public RelayCommand ApplyProfileCommand { get; }
+    public RelayCommand DeleteProfileCommand { get; }
+    public AsyncRelayCommand RunMacroCommand { get; }
+    public RelayCommand SaveMacroCommand { get; }
+    public RelayCommand DeleteMacroCommand { get; }
+    public RelayCommand StartSchedulerCommand { get; }
+    public RelayCommand StopSchedulerCommand { get; }
     public RelayCommand OpenBluetoothSettingsCommand { get; }
 
     public MainViewModel(
@@ -284,6 +414,9 @@ public class MainViewModel : ObservableObject
         _ble = ble;
         _sim = simulator;
         _git = git;
+
+        TrafficView = CollectionViewSource.GetDefaultView(Traffic);
+        TrafficView.Filter = TrafficFilter;
 
         _classic.DataReceived += OnData;
         _classic.ErrorOccurred += OnError;
@@ -311,8 +444,18 @@ public class MainViewModel : ObservableObject
         ExportLogsTxtCommand = new RelayCommand(ExportLogsTxt);
         ClearTrafficCommand = new RelayCommand(ClearTraffic);
         ClearLogsCommand = new RelayCommand(ClearLogs);
+        SaveProfileCommand = new RelayCommand(SaveProfile);
+        ApplyProfileCommand = new RelayCommand(ApplyProfile);
+        DeleteProfileCommand = new RelayCommand(DeleteProfile);
+        RunMacroCommand = new AsyncRelayCommand(RunMacroAsync);
+        SaveMacroCommand = new RelayCommand(SaveMacro);
+        DeleteMacroCommand = new RelayCommand(DeleteMacro);
+        StartSchedulerCommand = new RelayCommand(StartScheduler);
+        StopSchedulerCommand = new RelayCommand(StopScheduler);
         OpenBluetoothSettingsCommand = new RelayCommand(OpenBluetoothSettings);
 
+        LoadProfiles();
+        LoadMacros();
         UpdateUiTexts();
 
         _ = LoadGitInfoAsync();
@@ -491,6 +634,7 @@ public class MainViewModel : ObservableObject
         _isManualDisconnect = true;
         try
         {
+            StopScheduler();
             switch (_activeTransport)
             {
                 case DeviceTransport.ClassicSerial:
@@ -900,6 +1044,270 @@ public class MainViewModel : ObservableObject
         AddLog("BILGI", L("Log kayıtları temizlendi.", "Logs cleared."));
     }
 
+    private bool TrafficFilter(object obj)
+    {
+        if (obj is not LogEntry entry)
+        {
+            return false;
+        }
+
+        var typeOk = TrafficFilterType == "ALL" || string.Equals(entry.Type, TrafficFilterType, StringComparison.OrdinalIgnoreCase);
+        var keywordOk = string.IsNullOrWhiteSpace(TrafficFilterKeyword)
+            || entry.Message.Contains(TrafficFilterKeyword, StringComparison.OrdinalIgnoreCase)
+            || entry.Type.Contains(TrafficFilterKeyword, StringComparison.OrdinalIgnoreCase);
+
+        return typeOk && keywordOk;
+    }
+
+    private static string ProfilesPath => Path.Combine(AppStateDirectory, "profiles.json");
+    private static string MacrosPath => Path.Combine(AppStateDirectory, "macros.json");
+    private static string AppStateDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KozaBluetooth");
+
+    private void LoadProfiles()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppStateDirectory);
+            if (!File.Exists(ProfilesPath))
+            {
+                return;
+            }
+
+            var json = File.ReadAllText(ProfilesPath);
+            var loaded = JsonSerializer.Deserialize<List<ConnectionProfile>>(json) ?? new List<ConnectionProfile>();
+            Profiles.Clear();
+            foreach (var item in loaded)
+            {
+                Profiles.Add(item);
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog("UYARI", $"Profil yükleme hatası: {ex.Message}");
+        }
+    }
+
+    private void SaveProfilesToDisk()
+    {
+        Directory.CreateDirectory(AppStateDirectory);
+        var json = JsonSerializer.Serialize(Profiles.ToList(), new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(ProfilesPath, json);
+    }
+
+    private void SaveProfile()
+    {
+        try
+        {
+            var name = string.IsNullOrWhiteSpace(ProfileNameInput) ? "Varsayilan" : ProfileNameInput.Trim();
+            var existing = Profiles.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            var profile = existing ?? new ConnectionProfile { Name = name };
+
+            profile.ComPort = SelectedComPort;
+            profile.BaudRate = SelectedBaudRate;
+            profile.CommandMode = SelectedCommandMode;
+            profile.LineEnding = SelectedLineEnding;
+            profile.BleService = SelectedBleService;
+            profile.BleCharacteristic = SelectedBleCharacteristic;
+            profile.BleWriteMode = SelectedBleWriteMode;
+
+            if (existing == null)
+            {
+                Profiles.Add(profile);
+            }
+
+            SaveProfilesToDisk();
+            AddLog("BILGI", $"Profil kaydedildi: {name}");
+        }
+        catch (Exception ex)
+        {
+            OnError($"Profil kaydetme hatası: {ex.Message}");
+        }
+    }
+
+    private void ApplyProfile()
+    {
+        if (SelectedProfile == null)
+        {
+            AddLog("UYARI", "Uygulamak için profil seçin.");
+            return;
+        }
+
+        SelectedComPort = SelectedProfile.ComPort;
+        SelectedBaudRate = SelectedProfile.BaudRate;
+        SelectedCommandMode = SelectedProfile.CommandMode;
+        SelectedLineEnding = SelectedProfile.LineEnding;
+        SelectedBleService = SelectedProfile.BleService;
+        SelectedBleCharacteristic = SelectedProfile.BleCharacteristic;
+        SelectedBleWriteMode = SelectedProfile.BleWriteMode;
+
+        AddLog("BILGI", $"Profil uygulandı: {SelectedProfile.Name}");
+    }
+
+    private void DeleteProfile()
+    {
+        if (SelectedProfile == null)
+        {
+            return;
+        }
+
+        var name = SelectedProfile.Name;
+        Profiles.Remove(SelectedProfile);
+        SelectedProfile = null;
+        SaveProfilesToDisk();
+        AddLog("BILGI", $"Profil silindi: {name}");
+    }
+
+    private void LoadMacros()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppStateDirectory);
+            if (!File.Exists(MacrosPath))
+            {
+                return;
+            }
+
+            var json = File.ReadAllText(MacrosPath);
+            var loaded = JsonSerializer.Deserialize<List<MacroCommand>>(json) ?? new List<MacroCommand>();
+            Macros.Clear();
+            foreach (var item in loaded)
+            {
+                Macros.Add(item);
+            }
+        }
+        catch (Exception ex)
+        {
+            AddLog("UYARI", $"Makro yükleme hatası: {ex.Message}");
+        }
+    }
+
+    private void SaveMacrosToDisk()
+    {
+        Directory.CreateDirectory(AppStateDirectory);
+        var json = JsonSerializer.Serialize(Macros.ToList(), new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(MacrosPath, json);
+    }
+
+    private void SaveMacro()
+    {
+        try
+        {
+            var name = string.IsNullOrWhiteSpace(MacroNameInput) ? "Yeni Makro" : MacroNameInput.Trim();
+            var existing = Macros.FirstOrDefault(m => string.Equals(m.Name, name, StringComparison.OrdinalIgnoreCase));
+            var macro = existing ?? new MacroCommand { Name = name };
+            macro.CommandsText = MacroCommandsInput;
+            macro.DelayMs = Math.Max(0, MacroDelayMs);
+
+            if (existing == null)
+            {
+                Macros.Add(macro);
+            }
+
+            SaveMacrosToDisk();
+            AddLog("BILGI", $"Makro kaydedildi: {name}");
+        }
+        catch (Exception ex)
+        {
+            OnError($"Makro kaydetme hatası: {ex.Message}");
+        }
+    }
+
+    private void DeleteMacro()
+    {
+        if (SelectedMacro == null)
+        {
+            return;
+        }
+
+        var name = SelectedMacro.Name;
+        Macros.Remove(SelectedMacro);
+        SelectedMacro = null;
+        SaveMacrosToDisk();
+        AddLog("BILGI", $"Makro silindi: {name}");
+    }
+
+    private async Task RunMacroAsync()
+    {
+        var macro = SelectedMacro ?? new MacroCommand
+        {
+            Name = string.IsNullOrWhiteSpace(MacroNameInput) ? "Ad-hoc" : MacroNameInput,
+            CommandsText = MacroCommandsInput,
+            DelayMs = Math.Max(0, MacroDelayMs)
+        };
+
+        if (string.IsNullOrWhiteSpace(macro.CommandsText))
+        {
+            AddLog("UYARI", "Makro komutları boş.");
+            return;
+        }
+
+        var commands = macro.CommandsText
+            .Split(new[] { "\r\n", "\n", ";" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToList();
+
+        AddLog("BILGI", $"Makro başladı: {macro.Name} ({commands.Count} komut)");
+        foreach (var cmd in commands)
+        {
+            await SendRawAsync(cmd);
+            if (macro.DelayMs > 0)
+            {
+                await Task.Delay(macro.DelayMs);
+            }
+        }
+
+        AddLog("BILGI", $"Makro tamamlandı: {macro.Name}");
+    }
+
+    private void StartScheduler()
+    {
+        if (IsSchedulerRunning)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SchedulerCommand))
+        {
+            AddLog("UYARI", "Zamanlı komut boş olamaz.");
+            return;
+        }
+
+        var interval = Math.Max(200, SchedulerIntervalMs);
+        _schedulerCts = new CancellationTokenSource();
+        IsSchedulerRunning = true;
+        AddLog("BILGI", $"Zamanlı gönderim başladı ({interval} ms).");
+
+        _ = Task.Run(async () =>
+        {
+            while (!_schedulerCts.IsCancellationRequested)
+            {
+                await App.Current.Dispatcher.InvokeAsync(async () => await SendRawAsync(SchedulerCommand));
+                try
+                {
+                    await Task.Delay(interval, _schedulerCts.Token);
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+            }
+        });
+    }
+
+    private void StopScheduler()
+    {
+        if (!IsSchedulerRunning)
+        {
+            return;
+        }
+
+        _schedulerCts?.Cancel();
+        _schedulerCts?.Dispose();
+        _schedulerCts = null;
+        IsSchedulerRunning = false;
+        AddLog("BILGI", "Zamanlı gönderim durduruldu.");
+    }
+
     private void ExportLogsTxt()
     {
         try
@@ -955,6 +1363,18 @@ public class MainViewModel : ObservableObject
         HexHintText = L("HEX örnek: AA 01 0D 0A", "HEX example: AA 01 0D 0A");
         AutoReconnectText = L("Otomatik Yeniden Bağlan", "Auto Reconnect");
         HealthTelemetryText = L("Sağlık Telemetrisi", "Health Telemetry");
+        ProfilesTitleText = L("Profiller", "Profiles");
+        SaveProfileText = L("Profili Kaydet", "Save Profile");
+        ApplyProfileText = L("Profili Uygula", "Apply Profile");
+        DeleteProfileText = L("Profili Sil", "Delete Profile");
+        MacroTitleText = L("Makrolar", "Macros");
+        RunMacroText = L("Makroyu Çalıştır", "Run Macro");
+        SaveMacroText = L("Makroyu Kaydet", "Save Macro");
+        DeleteMacroText = L("Makroyu Sil", "Delete Macro");
+        SchedulerTitleText = L("Zamanlı Gönderim", "Scheduled Send");
+        StartSchedulerText = L("Başlat", "Start");
+        StopSchedulerText = L("Durdur", "Stop");
+        TrafficFilterText = L("Akış Filtresi", "Flow Filter");
 
         ComPortText = "COM Port";
         BaudRateText = "Baud Rate";
