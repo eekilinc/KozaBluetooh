@@ -93,6 +93,7 @@ public class MainViewModel : ObservableObject
     private int _rxCount;
     private int _errorCount;
     private int _reconnectCount;
+    private DateTime _lastTelemetryRefreshAt = DateTime.MinValue;
 
     private string _profileNameInput = "Varsayilan";
     private ConnectionProfile? _selectedProfile;
@@ -105,6 +106,9 @@ public class MainViewModel : ObservableObject
     private bool _isSchedulerRunning;
     private string _trafficFilterKeyword = string.Empty;
     private string _trafficFilterType = "ALL";
+
+    private const int MaxTrafficRows = 1500;
+    private const int MaxLogRows = 3000;
 
     private DeviceTransport? _activeTransport;
     private DeviceTransport? _lastTransport;
@@ -198,7 +202,7 @@ public class MainViewModel : ObservableObject
         {
             if (SetProperty(ref _enableHealthTelemetry, value))
             {
-                RefreshAboutText();
+                MaybeRefreshTelemetry(force: true);
             }
         }
     }
@@ -698,7 +702,7 @@ public class MainViewModel : ObservableObject
                     _reconnectCount++;
                     SetStatus(ConnectionState.Connected);
                     AddLog("BILGI", "Yeniden bağlandı.");
-                    RefreshAboutText();
+                    MaybeRefreshTelemetry();
                     return;
                 }
                 catch (Exception ex)
@@ -768,7 +772,7 @@ public class MainViewModel : ObservableObject
             AddTraffic("GIDEN", sendPreview);
             AddLog("GIDEN", $"[{SelectedCommandMode}/{SelectedLineEnding}] {sendPreview}");
             _txCount++;
-            RefreshAboutText();
+            MaybeRefreshTelemetry();
         }
         catch (Exception ex)
         {
@@ -893,7 +897,7 @@ public class MainViewModel : ObservableObject
             AddTraffic("GELEN", text);
             AddLog("GELEN", text);
             _rxCount++;
-            RefreshAboutText();
+            MaybeRefreshTelemetry();
         });
     }
 
@@ -904,7 +908,7 @@ public class MainViewModel : ObservableObject
             _errorCount++;
             SetStatus(ConnectionState.Error);
             AddLog("HATA", message);
-            RefreshAboutText();
+            MaybeRefreshTelemetry();
 
             if (AutoReconnectEnabled && !_isManualDisconnect && !_isReconnectInProgress && _activeTransport != null && _lastTransport != null)
             {
@@ -923,7 +927,7 @@ public class MainViewModel : ObservableObject
             StatusBrush = Brushes.Gray;
             AddLog("HATA", message);
             _errorCount++;
-            RefreshAboutText();
+            MaybeRefreshTelemetry();
 
             if (AutoReconnectEnabled && !_isManualDisconnect && !_isReconnectInProgress && _lastTransport != null)
             {
@@ -965,7 +969,7 @@ public class MainViewModel : ObservableObject
             });
         }
 
-        while (Traffic.Count > 1500)
+        while (Traffic.Count > MaxTrafficRows)
         {
             Traffic.RemoveAt(Traffic.Count - 1);
         }
@@ -979,6 +983,11 @@ public class MainViewModel : ObservableObject
             Type = type,
             Message = message
         });
+
+        while (Logs.Count > MaxLogRows)
+        {
+            Logs.RemoveAt(Logs.Count - 1);
+        }
     }
 
     private void SetStatus(ConnectionState state)
@@ -1422,6 +1431,27 @@ public class MainViewModel : ObservableObject
         AboutText = L(
             "KozaBluetooth\nWindows 10/11 için Classic Bluetooth (HC-05/HC-06) ve BLE terminal uygulaması.\nGeliştirici: Koza Akademi\n" + GitInfoText + "\nRepo: https://github.com/eekilinc/KozaBluetooh" + telemetryLine,
             "KozaBluetooth\nClassic Bluetooth (HC-05/HC-06) and BLE terminal app for Windows 10/11.\nDeveloper: Koza Akademi\n" + GitInfoText + "\nRepo: https://github.com/eekilinc/KozaBluetooh" + telemetryLine);
+    }
+
+    private void MaybeRefreshTelemetry(bool force = false)
+    {
+        if (!EnableHealthTelemetry)
+        {
+            if (force)
+            {
+                RefreshAboutText();
+            }
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        if (!force && (now - _lastTelemetryRefreshAt).TotalMilliseconds < 1000)
+        {
+            return;
+        }
+
+        _lastTelemetryRefreshAt = now;
+        RefreshAboutText();
     }
 
     private void RemoveDevicesByTransport(DeviceTransport transport)
