@@ -420,8 +420,10 @@ public class MainViewModel : ObservableObject
 
         _classic.DataReceived += OnData;
         _classic.ErrorOccurred += OnError;
+        _classic.ConnectionLost += OnConnectionLost;
         _ble.DataReceived += OnData;
         _ble.ErrorOccurred += OnError;
+        _ble.ConnectionLost += OnConnectionLost;
         _sim.DataReceived += OnData;
 
         ScanClassicCommand = new AsyncRelayCommand(ScanClassicAsync);
@@ -905,6 +907,25 @@ public class MainViewModel : ObservableObject
             RefreshAboutText();
 
             if (AutoReconnectEnabled && !_isManualDisconnect && !_isReconnectInProgress && _activeTransport != null && _lastTransport != null)
+            {
+                _ = ReconnectAsync();
+            }
+        });
+    }
+
+    private void OnConnectionLost(string message)
+    {
+        App.Current.Dispatcher.Invoke(() =>
+        {
+            _activeTransport = null;
+            StopScheduler();
+            StatusText = L("Bağlantı koptu", "Connection lost");
+            StatusBrush = Brushes.Gray;
+            AddLog("HATA", message);
+            _errorCount++;
+            RefreshAboutText();
+
+            if (AutoReconnectEnabled && !_isManualDisconnect && !_isReconnectInProgress && _lastTransport != null)
             {
                 _ = ReconnectAsync();
             }

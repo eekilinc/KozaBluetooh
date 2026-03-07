@@ -6,6 +6,7 @@ public interface IBleBluetoothService
 {
     event Action<string>? DataReceived;
     event Action<string>? ErrorOccurred;
+    event Action<string>? ConnectionLost;
     bool IsConnected { get; }
 
     Task<IReadOnlyList<(string Name, ulong Address)>> ScanAsync(TimeSpan duration);

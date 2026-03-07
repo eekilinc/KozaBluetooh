@@ -12,9 +12,11 @@ public class BleBluetoothService : IBleBluetoothService
     private BluetoothLEDevice? _device;
     private GattCharacteristic? _ioCharacteristic;
     private BleWriteMode _writeMode = BleWriteMode.Auto;
+    private bool _isIntentionalDisconnect;
 
     public event Action<string>? DataReceived;
     public event Action<string>? ErrorOccurred;
+    public event Action<string>? ConnectionLost;
 
     public bool IsConnected => _device != null;
 
@@ -47,11 +49,15 @@ public class BleBluetoothService : IBleBluetoothService
 
     public async Task ConnectAsync(ulong address)
     {
+        _isIntentionalDisconnect = false;
         _device = await BluetoothLEDevice.FromBluetoothAddressAsync(address);
         if (_device == null)
         {
             throw new InvalidOperationException("BLE device could not be connected.");
         }
+
+        _device.ConnectionStatusChanged -= DeviceOnConnectionStatusChanged;
+        _device.ConnectionStatusChanged += DeviceOnConnectionStatusChanged;
     }
 
     public async Task<IReadOnlyList<Guid>> GetServicesAsync()
@@ -175,6 +181,7 @@ public class BleBluetoothService : IBleBluetoothService
 
     public async Task DisconnectAsync()
     {
+        _isIntentionalDisconnect = true;
         if (_ioCharacteristic != null)
         {
             try
@@ -201,6 +208,10 @@ public class BleBluetoothService : IBleBluetoothService
 
         try
         {
+            if (_device != null)
+            {
+                _device.ConnectionStatusChanged -= DeviceOnConnectionStatusChanged;
+            }
             _device?.Dispose();
         }
         catch
@@ -209,6 +220,20 @@ public class BleBluetoothService : IBleBluetoothService
         }
 
         _device = null;
+        _isIntentionalDisconnect = false;
+    }
+
+    private void DeviceOnConnectionStatusChanged(BluetoothLEDevice sender, object args)
+    {
+        if (_isIntentionalDisconnect)
+        {
+            return;
+        }
+
+        if (sender.ConnectionStatus == BluetoothConnectionStatus.Disconnected)
+        {
+            ConnectionLost?.Invoke("BLE bağlantısı koptu.");
+        }
     }
 
     private void IoCharacteristicOnValueChanged(GattCharacteristic sender, GattValueChangedEventArgs args)

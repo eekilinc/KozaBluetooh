@@ -4,6 +4,7 @@ public interface IClassicBluetoothService
 {
     event Action<string>? DataReceived;
     event Action<string>? ErrorOccurred;
+    event Action<string>? ConnectionLost;
     bool IsConnected { get; }
 
     Task<IReadOnlyList<(string Port, string FriendlyName)>> GetAvailablePortsAsync();

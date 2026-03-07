@@ -19,9 +19,11 @@ public class ClassicBluetoothService : IClassicBluetoothService
     private DataReader? _rfcommReader;
     private CancellationTokenSource? _rfcommReadCts;
     private Task? _rfcommReadTask;
+    private bool _isIntentionalDisconnect;
 
     public event Action<string>? DataReceived;
     public event Action<string>? ErrorOccurred;
+    public event Action<string>? ConnectionLost;
 
     public bool IsConnected => _serialPort?.IsOpen == true || _rfcommSocket != null;
 
@@ -77,6 +79,8 @@ public class ClassicBluetoothService : IClassicBluetoothService
                 WriteTimeout = 500
             };
             _serialPort.DataReceived += SerialPortOnDataReceived;
+            _serialPort.ErrorReceived += SerialPortOnErrorReceived;
+            _serialPort.PinChanged += SerialPortOnPinChanged;
             _serialPort.Open();
             return Task.CompletedTask;
         }
@@ -156,9 +160,12 @@ public class ClassicBluetoothService : IClassicBluetoothService
 
     public Task DisconnectAsync()
     {
+        _isIntentionalDisconnect = true;
         if (_serialPort != null)
         {
             Safe(() => _serialPort.DataReceived -= SerialPortOnDataReceived);
+            Safe(() => _serialPort.ErrorReceived -= SerialPortOnErrorReceived);
+            Safe(() => _serialPort.PinChanged -= SerialPortOnPinChanged);
             Safe(() =>
             {
                 if (_serialPort.IsOpen)
@@ -172,6 +179,7 @@ public class ClassicBluetoothService : IClassicBluetoothService
         }
 
         DisconnectRfcomm();
+        _isIntentionalDisconnect = false;
         return Task.CompletedTask;
     }
 
@@ -188,6 +196,25 @@ public class ClassicBluetoothService : IClassicBluetoothService
         catch (Exception ex)
         {
             ErrorOccurred?.Invoke($"Classic read error: {ex.Message}");
+            RaiseConnectionLost("Classic serial okuma hatasi nedeniyle bağlantı koptu.");
+        }
+    }
+
+    private void SerialPortOnErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+    {
+        if (e.EventType == SerialError.TXFull)
+        {
+            return;
+        }
+
+        RaiseConnectionLost($"Classic serial hata olayı: {e.EventType}");
+    }
+
+    private void SerialPortOnPinChanged(object sender, SerialPinChangedEventArgs e)
+    {
+        if (e.EventType == SerialPinChange.CDChanged && _serialPort?.CDHolding == false)
+        {
+            RaiseConnectionLost("Classic taşıyıcı sinyal kaybı (CDChanged).");
         }
     }
 
@@ -205,7 +232,8 @@ public class ClassicBluetoothService : IClassicBluetoothService
                 var loaded = await _rfcommReader.LoadAsync(256);
                 if (loaded == 0)
                 {
-                    continue;
+                    RaiseConnectionLost("RFCOMM akışı kapandı.");
+                    return;
                 }
 
                 var bytes = new byte[loaded];
@@ -222,8 +250,19 @@ public class ClassicBluetoothService : IClassicBluetoothService
             if (!token.IsCancellationRequested)
             {
                 ErrorOccurred?.Invoke($"Classic RFCOMM read error: {ex.Message}");
+                RaiseConnectionLost("Classic RFCOMM okuma hatası nedeniyle bağlantı koptu.");
             }
         }
+    }
+
+    private void RaiseConnectionLost(string message)
+    {
+        if (_isIntentionalDisconnect)
+        {
+            return;
+        }
+
+        ConnectionLost?.Invoke(message);
     }
 
     private void DisconnectRfcomm()
