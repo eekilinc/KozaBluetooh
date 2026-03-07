@@ -27,17 +27,24 @@ jobs:
       - name: Build
         run: dotnet build BluetoothDeskApp.sln -c Release --no-restore
 
-      - name: Publish EXE
-        run: dotnet publish src/BluetoothDeskApp/BluetoothDeskApp.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None /p:DebugSymbols=false -o artifacts/win-x64
+      - name: Publish EXE (self-contained)
+        run: dotnet publish src/BluetoothDeskApp/BluetoothDeskApp.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None /p:DebugSymbols=false -o artifacts/self-contained
 
-      - name: Prepare portable EXE only
+      - name: Publish EXE (lite framework-dependent)
+        run: dotnet publish src/BluetoothDeskApp/BluetoothDeskApp.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true /p:DebugType=None /p:DebugSymbols=false -o artifacts/lite
+
+      - name: Prepare portable EXE files
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path artifacts/portable -Force | Out-Null
-          Copy-Item artifacts/win-x64/KozaBluetooth.exe artifacts/portable/KozaBluetooth.exe -Force
+          Copy-Item artifacts/self-contained/KozaBluetooth.exe artifacts/portable/KozaBluetooth.exe -Force
+          Copy-Item artifacts/lite/KozaBluetooth.exe artifacts/portable/KozaBluetooth-lite.exe -Force
 
-      - name: Archive EXE
+      - name: Archive EXE packages
         run: powershell -Command "Compress-Archive -Path artifacts/portable/KozaBluetooth.exe -DestinationPath artifacts/KozaBluetooth-portable.zip -Force"
+
+      - name: Archive Lite EXE package
+        run: powershell -Command "Compress-Archive -Path artifacts/portable/KozaBluetooth-lite.exe -DestinationPath artifacts/KozaBluetooth-lite.zip -Force"
 
       - name: Prepare Turkish release notes
         shell: pwsh
@@ -47,16 +54,18 @@ jobs:
 
           ## Ozet
           - Windows x64 icin kurulum gerektirmeyen tek dosya EXE eklendi.
+          - Ek olarak daha kucuk boyutlu framework-dependent KozaBluetooth-lite.exe eklendi.
           - Bluetooth Classic (HC-05/HC-06) ve BLE destegi bu surumde mevcuttur.
 
           ## Calistirma
-          1. Asagidaki varliklardan KozaBluetooth.exe dosyasini dogrudan indirin.
-          2. Dosyayi herhangi bir klasorde calistirin.
-          3. Alternatif olarak KozaBluetooth-portable.zip dosyasini indirip acabilirsiniz.
+          1. KozaBluetooth.exe (self-contained) dosyasini indirip dogrudan calistirabilirsiniz.
+          2. KozaBluetooth-lite.exe (kucuk boyut) icin sistemde .NET 8 Desktop Runtime kurulu olmalidir.
+          3. Alternatif olarak ilgili zip paketlerini indirip acabilirsiniz.
 
           ## Notlar
           - Uygulama Windows 10/11 icin hedeflenmistir.
           - HC-05/HC-06 baglantisi icin gerekirse COM veya RFCOMM kullanin.
+          - Lite surum icin: https://dotnet.microsoft.com/download/dotnet/8.0/runtime
           "@ | Set-Content -Path artifacts/release-notes.md -Encoding UTF8
 
       - name: Create GitHub Release
@@ -66,4 +75,6 @@ jobs:
           body_path: artifacts/release-notes.md
           files: |
             artifacts/portable/KozaBluetooth.exe
+            artifacts/portable/KozaBluetooth-lite.exe
             artifacts/KozaBluetooth-portable.zip
+            artifacts/KozaBluetooth-lite.zip

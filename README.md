@@ -50,8 +50,10 @@ dotnet test
 3. Write/Notify characteristic secip uygulayin.
 
 ## GitHub Actions
-- `Build Windows EXE` workflow'u, `main` branch'e push oldugunda sadece `KozaBluetooth.exe` artifact uretir.
-- `Release on Tag` workflow'u, tag atildiginda (`v1.0.0` gibi) GitHub Release olusturur ve dogrudan calisan `KozaBluetooth.exe` ile `KozaBluetooth-portable.zip` dosyalarini ekler.
+- `Build Windows EXE` workflow'u, `main` branch'e push oldugunda iki artifact uretir:
+  - `KozaBluetooth.exe` (self-contained, daha buyuk)
+  - `KozaBluetooth-lite.exe` (framework-dependent, daha kucuk)
+- `Release on Tag` workflow'u, tag atildiginda (`v1.0.0` gibi) GitHub Release olusturur ve EXE + zip dosyalarini ekler.
 
 ## Release Alma (Tag ile)
 Asagidaki komutlar release tetikler:
@@ -61,4 +63,10 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-Ardindan GitHub Releases sayfasinda otomatik olusan surume dogrudan calisan EXE dosyasi eklenecektir.
+Ardindan GitHub Releases sayfasinda otomatik olusan surume su dosyalar eklenir:
+- `KozaBluetooth.exe`
+- `KozaBluetooth-lite.exe`
+- `KozaBluetooth-portable.zip`
+- `KozaBluetooth-lite.zip`
+
+Not: `KozaBluetooth-lite.exe` calismasi icin sistemde .NET 8 Desktop Runtime kurulu olmalidir.

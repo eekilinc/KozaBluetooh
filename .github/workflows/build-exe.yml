@@ -24,17 +24,27 @@ jobs:
       - name: Build
         run: dotnet build BluetoothDeskApp.sln -c Release --no-restore
 
-      - name: Publish EXE
-        run: dotnet publish src/BluetoothDeskApp/BluetoothDeskApp.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None /p:DebugSymbols=false -o artifacts/win-x64
+      - name: Publish EXE (self-contained)
+        run: dotnet publish src/BluetoothDeskApp/BluetoothDeskApp.csproj -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:DebugType=None /p:DebugSymbols=false -o artifacts/self-contained
 
-      - name: Prepare portable EXE only
+      - name: Publish EXE (lite framework-dependent)
+        run: dotnet publish src/BluetoothDeskApp/BluetoothDeskApp.csproj -c Release -r win-x64 --self-contained false /p:PublishSingleFile=true /p:DebugType=None /p:DebugSymbols=false -o artifacts/lite
+
+      - name: Prepare portable EXE files
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path artifacts/portable -Force | Out-Null
-          Copy-Item artifacts/win-x64/KozaBluetooth.exe artifacts/portable/KozaBluetooth.exe -Force
+          Copy-Item artifacts/self-contained/KozaBluetooth.exe artifacts/portable/KozaBluetooth.exe -Force
+          Copy-Item artifacts/lite/KozaBluetooth.exe artifacts/portable/KozaBluetooth-lite.exe -Force
 
-      - name: Upload EXE artifact
+      - name: Upload self-contained EXE artifact
         uses: actions/upload-artifact@v4
         with:
           name: KozaBluetooth-portable-exe
           path: artifacts/portable/KozaBluetooth.exe
+
+      - name: Upload lite EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KozaBluetooth-lite-exe
+          path: artifacts/portable/KozaBluetooth-lite.exe
