@@ -1,0 +1,96 @@
+<Window x:Class="BluetoothDeskApp.GuideWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Kullanım Rehberi" Height="720" Width="980" WindowStartupLocation="CenterOwner"
+        Background="#F4F7F9" FontFamily="Bahnschrift">
+  <Window.Resources>
+    <Style x:Key="CardStyle" TargetType="Border">
+      <Setter Property="Background" Value="White" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="12" />
+      <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style TargetType="TextBlock" x:Key="H2">
+      <Setter Property="FontSize" Value="17" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+      <Setter Property="Foreground" Value="#0F172A" />
+    </Style>
+    <Style TargetType="TextBlock" x:Key="Body">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="#334155" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+      <Setter Property="FontSize" Value="13" />
+    </Style>
+  </Window.Resources>
+
+  <Grid Margin="14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0" Background="#0F766E" CornerRadius="12" Padding="12" Margin="0,0,0,12">
+      <StackPanel>
+        <TextBlock Text="KozaBluetooth Kullanım Rehberi" Foreground="White" FontSize="24" FontWeight="Bold" />
+        <TextBlock Text="ASCII, HEX, satır sonu ve temel çalışma mantığını hızlıca öğrenin." Foreground="#D6FAF0" FontSize="13" />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+        <Border Style="{StaticResource CardStyle}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource H2}" Text="1) ASCII ve HEX nedir?" />
+            <TextBlock Style="{StaticResource Body}" Text="ASCII: İnsan okunabilir metindir. Ornek: START, STATUS, 1, HELLO." />
+            <TextBlock Style="{StaticResource Body}" Text="HEX: Baytların onaltılık gösterimidir. Ornek: AA 01 FF 0D 0A." />
+            <TextBlock Style="{StaticResource Body}" Text="Ne zaman ASCII? Cihaz metin komut bekliyorsa. Ne zaman HEX? Cihaz protokol dokumanında byte formatı isteniyorsa." />
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource CardStyle}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource H2}" Text="2) Satır sonu (Line Ending) ne demek?" />
+            <TextBlock Style="{StaticResource Body}" Text="NONE: Ek karakter eklenmez." />
+            <TextBlock Style="{StaticResource Body}" Text="LF: Sadece \n (0A) eklenir." />
+            <TextBlock Style="{StaticResource Body}" Text="CR: Sadece \r (0D) eklenir." />
+            <TextBlock Style="{StaticResource Body}" Text="CRLF: \r\n (0D 0A) eklenir. Birçok seri cihazda varsayılan budur." />
+            <TextBlock Style="{StaticResource Body}" Text="Komut gidiyor ama cihaz cevap vermiyorsa line ending secimini degistirip tekrar deneyin." />
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource CardStyle}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource H2}" Text="3) BLE Write modu" />
+            <TextBlock Style="{StaticResource Body}" Text="Auto: Uygulama characteristic ozelligine gore uygun modu secer." />
+            <TextBlock Style="{StaticResource Body}" Text="WriteWithoutResponse: Daha hizli, her zaman desteklenmeyebilir." />
+            <TextBlock Style="{StaticResource Body}" Text="WriteWithResponse: Daha guvenli, cihazdan onay bekler." />
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource CardStyle}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource H2}" Text="4) Hızlı başlangıç önerisi" />
+            <TextBlock Style="{StaticResource Body}" Text="Classic HC-05/HC-06 icin: ASCII + CRLF + 9600 baud ile baslayin." />
+            <TextBlock Style="{StaticResource Body}" Text="BLE icin: Cihaza baglanin, servis/characteristic secin, sonra komut gonderin." />
+            <TextBlock Style="{StaticResource Body}" Text="Canli akis sadece gelen/giden veriyi gosterir. Tum hata kayitlari Log sekmesindedir." />
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource CardStyle}">
+          <StackPanel>
+            <TextBlock Style="{StaticResource H2}" Text="5) Profesyonel kullanım ipuçları" />
+            <TextBlock Style="{StaticResource Body}" Text="Profil kaydedin: COM, baud, mode, line ending ayarlarini tekrar tekrar secmek zorunda kalmazsiniz." />
+            <TextBlock Style="{StaticResource Body}" Text="Makro kullanin: birden fazla komutu tek tusla gonderin." />
+            <TextBlock Style="{StaticResource Body}" Text="Zamanli gonderim: STATUS gibi sorgulari periyodik calistirabilirsiniz." />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+      <Button Content="Kapat" Width="100" Click="OnCloseClick" />
+    </StackPanel>
+  </Grid>
+</Window>

@@ -41,6 +41,15 @@ public partial class MainWindow : Window
         about.ShowDialog();
     }
 
+    private void OnGuideClick(object sender, RoutedEventArgs e)
+    {
+        var guide = new GuideWindow
+        {
+            Owner = this
+        };
+        guide.ShowDialog();
+    }
+
     private void OnFullscreenToggleClick(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem item)

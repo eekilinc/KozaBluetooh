@@ -55,6 +55,7 @@
         <MenuItem Header="Bluetooth Ayarları" Command="{Binding OpenBluetoothSettingsCommand}" />
       </MenuItem>
       <MenuItem Header="Yardım">
+        <MenuItem Header="Kullanım Rehberi" Click="OnGuideClick" />
         <MenuItem Header="Hakkında" Click="OnAboutClick" />
       </MenuItem>
     </Menu>
