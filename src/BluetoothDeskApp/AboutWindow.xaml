@@ -1,0 +1,23 @@
+<Window x:Class="BluetoothDeskApp.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Hakkinda" Height="340" Width="520" WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        Background="#F8FAFC" FontFamily="Bahnschrift">
+  <Grid Margin="14">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0" Text="KozaBluetooth" FontSize="26" FontWeight="Bold" Foreground="#0F766E" />
+
+    <Border Grid.Row="1" Margin="0,10,0,10" Background="White" CornerRadius="10" Padding="10">
+      <TextBlock Text="{Binding AboutText}" TextWrapping="Wrap" Foreground="#334155" />
+    </Border>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="Kapat" Width="90" Click="OnCloseClick" />
+    </StackPanel>
+  </Grid>
+</Window>

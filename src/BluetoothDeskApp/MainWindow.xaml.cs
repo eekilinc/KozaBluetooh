@@ -6,16 +6,51 @@ namespace BluetoothDeskApp;
 
 public partial class MainWindow : Window
 {
+    private readonly MainViewModel _vm;
+
     public MainWindow()
     {
         InitializeComponent();
 
-        var vm = new MainViewModel(
+        _vm = new MainViewModel(
             new ClassicBluetoothService(),
             new BleBluetoothService(),
             new SimulatorService(),
             new GitInfoService());
 
-        DataContext = vm;
+        DataContext = _vm;
+    }
+
+    private void OnExitClick(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void OnAboutClick(object sender, RoutedEventArgs e)
+    {
+        var about = new AboutWindow(_vm)
+        {
+            Owner = this
+        };
+        about.ShowDialog();
+    }
+
+    private void OnFullscreenToggleClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem item)
+        {
+            return;
+        }
+
+        if (item.IsChecked)
+        {
+            WindowState = WindowState.Maximized;
+            WindowStyle = WindowStyle.SingleBorderWindow;
+        }
+        else
+        {
+            WindowState = WindowState.Normal;
+            WindowStyle = WindowStyle.SingleBorderWindow;
+        }
     }
 }
